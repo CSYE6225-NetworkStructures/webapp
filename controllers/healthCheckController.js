@@ -13,6 +13,11 @@ const allowedHeaders = [
 
 const performHealthCheck = async (req, res) => {
   try {
+    
+    if (req.method === "HEAD") {
+      return res.status(405).end();
+    }
+
     const incomingHeaders = Object.keys(req.headers);
     const invalidHeaders = incomingHeaders.filter(
       (header) => !allowedHeaders.includes(header.toLowerCase())
