@@ -19,6 +19,14 @@ This project implements a backend (API-only) web application with a health check
   - `405 Method Not Allowed`: Unsupported HTTP method.
   - `400 Bad Request`: Request contains a payload.
 
+## Unit Tests
+The project includes unit tests located in the `__tests__` directory. These tests ensure the functionality and reliability of critical API features, including the health check endpoint.
+
+## Scripts
+A `scripts` folder contains a shell script (`script.sh`). This script is designed to automate setup tasks on a Linux cloud machine. It can:
+- Set up the SQL database.
+- Unzip and prepare the application code.
+
 ## .env File Structure
 Create a `.env` file in the root directory and add the following variables:
 
@@ -28,6 +36,7 @@ DB_PORT=3306
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 DB_NAME=your_db_name
+PORT=8080
 ```
 
 ## Prerequisites
@@ -42,7 +51,8 @@ Before you build and deploy the application locally, ensure the following prereq
      ```bash
      node -v
      npm -v
-   
+     ```
+
 ### 2. MySQL
 
    - Install MySQL (version 5.7 or higher) on your local machine.
@@ -53,38 +63,48 @@ Before you build and deploy the application locally, ensure the following prereq
 
 ### 3. Environment Variables
 
-  - Create a .env file in the root directory of the project.
+   - Create a `.env` file in the root directory of the project.
 
-  - Define the following environment variables:
-    ```plaintext
-    DB_HOST=localhost
-    DB_USER=your_database_user
-    DB_PASSWORD=your_database_password
-    DB_NAME=health_check
-    DB_PORT=3306
-    PORT = 8080
+   - Define the following environment variables:
+     ```plaintext
+     DB_HOST=localhost
+     DB_USER=your_database_user
+     DB_PASSWORD=your_database_password
+     DB_NAME=health_check
+     DB_PORT=3306
+     PORT = 8080
+     ```
 
 ## Setup Instructions
 
 ### 1. Clone the Repository
 
-    git clone https://github.com/CSYE6225-Network-Cloud/webapp.git
-    cd webapp
+   ```bash
+   git clone https://github.com/CSYE6225-Network-Cloud/webapp.git
+   cd webapp
+   ```
 
 ### 2. Install Dependencies
-     
-    npm install
+
+   ```bash
+   npm install
+   ```
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory and provide the following:
+   Create a `.env` file in the root directory and provide the following:
 
-    DB_HOST= localhost
-    DB_USER= <your_database_user>
-    DB_PASSWORD= <your_database_password>
-    DB_NAME= health_check
-    DB_PORT= 3306
-    PORT = 8080
+   ```plaintext
+   DB_HOST=localhost
+   DB_USER=<your_database_user>
+   DB_PASSWORD=<your_database_password>
+   DB_NAME=health_check
+   DB_PORT=3306
+   PORT=8080
+   ```
 
-### 4. Run server
-    npm start
+### 4. Run Server
+
+   ```bash
+   npm start
+   ```

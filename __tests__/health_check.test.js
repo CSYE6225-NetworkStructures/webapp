@@ -10,6 +10,7 @@ beforeAll(async () => {
 afterAll(async () => {
   if (server) {
     server.close(); 
+  }
 });
 
 describe('Health Check Endpoint', () => {
