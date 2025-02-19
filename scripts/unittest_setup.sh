@@ -6,8 +6,6 @@
 DB_NAME="healthcheck"
 APP_GROUP="webAPIGroup"
 APP_USER="webAPIUser"
-LOCAL_APP_PATH="./webapp.zip"           
-REMOTE_APP_DIR="/opt/csye6225"
 MYSQL_ROOT_PASSWORD=${1:-$MYSQL_ROOT_PASSWORD}  
 
 # Check if MySQL password is provided
@@ -85,13 +83,5 @@ check_unzip
 
 echo "Installing Node.js and npm..."
 install_nodejs_npm
-
-echo "Unzipping application from $LOCAL_APP_PATH..."
-sudo mkdir -p "$REMOTE_APP_DIR"
-sudo unzip -o "$LOCAL_APP_PATH" -d "$REMOTE_APP_DIR"
-
-echo "Changing ownership and permissions for the application directory..."
-sudo chown -R "$APP_USER:$APP_GROUP" "$REMOTE_APP_DIR"
-sudo chmod -R 750 "$REMOTE_APP_DIR"
 
 echo "Setup completed successfully!"
