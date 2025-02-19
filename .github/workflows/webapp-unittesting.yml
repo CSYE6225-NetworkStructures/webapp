@@ -1,0 +1,43 @@
+name: WebApp Unit Testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x scripts/script.sh
+
+      - name: Run setup script
+        run: ./scripts/unittest_setup.sh
+
+      - name: Create .env file
+        run: |
+          echo "Creating .env file from secrets..."
+          cat <<EOF > .env
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=${{ secrets.DB_PORT }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          PORT=${{ secrets.PORT }}
+          EOF
+          echo ".env file created."
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Tests
+        run: npm test
