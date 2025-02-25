@@ -1,9 +1,6 @@
 name: WebApp Unit Testing
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -12,6 +9,7 @@ jobs:
   run-tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'CSYE6225-NetworkStructures'
 
     services:
       mysql:

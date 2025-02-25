@@ -1,9 +1,6 @@
 name: Validate Packer Script
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -12,6 +9,7 @@ jobs:
   validate_packer:
     name: Validate Packer Script
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'CSYE6225-NetworkStructures'
 
     steps:
       - name: Checkout Repository
