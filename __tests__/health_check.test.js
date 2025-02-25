@@ -1,3 +1,5 @@
+//Assignment 3 Review
+
 const request = require('supertest');
 const { app, startServer } = require('../server'); 
 
@@ -15,7 +17,6 @@ afterAll(async () => {
 
 describe('Health Check Endpoint', () => {
   const endpoint = '/healthz';
-
   it('should return 200 for a valid GET request with no body and allowed headers', async () => {
     const response = await request(app).get(endpoint);
     expect(response.status).toBe(200);
