@@ -78,6 +78,10 @@ Before you build and deploy the application locally, ensure the following prereq
 
    - Unit tests are configured to check the functionalities, Unit tests are ran on every PR.
 
+### 4. Packer Infra
+
+   - With every PR Merged, An AMI and Machine Image is created in Dev and Demo Profiles.
+
 ## Setup Instructions
 
 ### 1. Clone the Repository
