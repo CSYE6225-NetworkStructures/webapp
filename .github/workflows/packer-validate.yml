@@ -20,16 +20,10 @@ jobs:
 
       - name: Build Application with pkg
         run: |
-          # Ensure dependencies are installed
           npm install
-
-          # Use `pkg` to create a binary executable
           pkg server.js --output infra/packer/dist/webapp --targets node18-linux-x64
-
-          # Ensure the binary has execute permissions
           chmod +x infra/packer/dist/webapp
-
-          echo "Build complete! Binary located at infra/packer/dist/webapp"
+          echo "Binary created at infra/packer/dist/webapp"
 
       - name: Install Packer
         uses: hashicorp/setup-packer@v2
