@@ -96,10 +96,11 @@ source "amazon-ebs" "ubuntu" {
 
 build {
   sources = [
-    "source.googlecompute.ubuntu",
+    # "source.googlecompute.ubuntu",
     "source.amazon-ebs.ubuntu"
   ]
 
+  # Common files for both GCP & AWS
   provisioner "file" {
     source      = "dist/webapp"
     destination = "/tmp/webapp"
@@ -110,15 +111,33 @@ build {
     destination = "/tmp/webapp.service"
   }
 
+  # Setup for GCP
   provisioner "file" {
+    only = ["googlecompute.ubuntu"]
     source      = "setup.sh"
     destination = "/tmp/setup.sh"
   }
-
+  
   provisioner "shell" {
+    only = ["googlecompute.ubuntu"]
     inline = [
       "chmod +x /tmp/setup.sh",
       "sudo /tmp/setup.sh"
+    ]
+  }
+
+  # Setup for AWS
+  provisioner "file" {
+    only = ["amazon-ebs.ubuntu"]
+    source      = "setup_aws.sh"
+    destination = "/tmp/setup_aws.sh"
+  }
+
+  provisioner "shell" {
+    only = ["amazon-ebs.ubuntu"]
+    inline = [
+      "chmod +x /tmp/setup_aws.sh",
+      "sudo /tmp/setup_aws.sh"
     ]
   }
 }
