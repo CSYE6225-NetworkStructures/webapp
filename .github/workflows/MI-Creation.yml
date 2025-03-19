@@ -116,6 +116,7 @@ jobs:
             -var "target_account_id=${DEMO_ACCOUNT_ID}" \
             -var "cloud_gcp_source_project=${GCP_PROJECT_ID}" \
             -var "cloud_gcp_target_project=${GCP_DEMO_PROJECT_ID}" \
+            -var "gcp_target_service_account=${{ secrets.GCP_DEMO_ACCOUNT_EMAIL }}" \
             machine-image.pkr.hcl
 
       - name: Verify AWS AMI Creation
@@ -130,135 +131,135 @@ jobs:
           
           echo "Latest AMI ID: ${LATEST_AMI_ID}"
       ###########
-      # - name: Verify GCP Machine Image Creation
-      #   run: |
-      #     echo "Verifying GCP Machine Image creation..."
-      #     gcloud compute images list --project=${GCP_PROJECT_ID} --filter="name:custom-nodejs-mysql" --limit=5
+      - name: Verify GCP Machine Image Creation
+        run: |
+          echo "Verifying GCP Machine Image creation..."
+          gcloud compute images list --project=${GCP_PROJECT_ID} --filter="name:custom-nodejs-mysql" --limit=5
 
-      # # Run the preami.sh script before Terraform
-      # - name: Run preami.sh with Latest AMI ID
-      #   working-directory: infra/terraform/aws
-      #   run: |
-      #     # Make sure the script is executable
-      #     chmod +x preami.sh
+      # Run the preami.sh script before Terraform
+      - name: Run preami.sh with Latest AMI ID
+        working-directory: infra/terraform/aws
+        run: |
+          # Make sure the script is executable
+          chmod +x preami.sh
           
-      #     # Set environment variables for the script
-      #     export DEV_AWS_ACCESS_KEY='${{ secrets.DEV_AWS_ACCESS_KEY }}'
-      #     export DEV_AWS_SECRET_KEY='${{ secrets.DEV_AWS_SECRET_KEY }}'
-      #     export DEMO_AWS_ACCESS_KEY='${{ secrets.DEMO_AWS_ACCESS_KEY }}'
-      #     export DEMO_AWS_SECRET_KEY='${{ secrets.DEMO_AWS_SECRET_KEY }}'
+          # Set environment variables for the script
+          export DEV_AWS_ACCESS_KEY='${{ secrets.DEV_AWS_ACCESS_KEY }}'
+          export DEV_AWS_SECRET_KEY='${{ secrets.DEV_AWS_SECRET_KEY }}'
+          export DEMO_AWS_ACCESS_KEY='${{ secrets.DEMO_AWS_ACCESS_KEY }}'
+          export DEMO_AWS_SECRET_KEY='${{ secrets.DEMO_AWS_SECRET_KEY }}'
           
-      #     # Run the script with the latest AMI ID
-      #     ./preami.sh ${LATEST_AMI_ID}
+          # Run the script with the latest AMI ID
+          ./preami.sh ${LATEST_AMI_ID}
 
-      # # Setup Terraform for AMI migration
-      # - name: Setup Terraform
-      #   uses: hashicorp/setup-terraform@v2
-      #   with:
-      #     terraform_version: latest
+      # Setup Terraform for AMI migration
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: latest
 
-      # # Initialize and Apply Terraform using existing file
-      # - name: Run Terraform to Migrate AMI
-      #   working-directory: infra/terraform/aws
-      #   run: |
-      #     terraform init
-      #     terraform apply -auto-approve \
-      #       -var="source_ami_id=${LATEST_AMI_ID}" \
-      #       -var="source_aws_access_key=${{ secrets.DEV_AWS_ACCESS_KEY }}" \
-      #       -var="source_aws_secret_key=${{ secrets.DEV_AWS_SECRET_KEY }}" \
-      #       -var="target_aws_access_key=${{ secrets.DEMO_AWS_ACCESS_KEY }}" \
-      #       -var="target_aws_secret_key=${{ secrets.DEMO_AWS_SECRET_KEY }}" \
-      #       -var="aws_region=us-east-1"
+      # Initialize and Apply Terraform using existing file
+      - name: Run Terraform to Migrate AMI
+        working-directory: infra/terraform/aws
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="source_ami_id=${LATEST_AMI_ID}" \
+            -var="source_aws_access_key=${{ secrets.DEV_AWS_ACCESS_KEY }}" \
+            -var="source_aws_secret_key=${{ secrets.DEV_AWS_SECRET_KEY }}" \
+            -var="target_aws_access_key=${{ secrets.DEMO_AWS_ACCESS_KEY }}" \
+            -var="target_aws_secret_key=${{ secrets.DEMO_AWS_SECRET_KEY }}" \
+            -var="aws_region=us-east-1"
 
-      # # Verify the AMI was copied successfully
-      # - name: Verify AMI Copy in DEMO Account
-      #   run: |
-      #     echo "Verifying AMI copy in DEMO account..."
+      # Verify the AMI was copied successfully
+      - name: Verify AMI Copy in DEMO Account
+        run: |
+          echo "Verifying AMI copy in DEMO account..."
           
-      #     # Temporarily use DEMO credentials to verify
-      #     export AWS_ACCESS_KEY_ID=${{ secrets.DEMO_AWS_ACCESS_KEY }}
-      #     export AWS_SECRET_ACCESS_KEY=${{ secrets.DEMO_AWS_SECRET_KEY }}
+          # Temporarily use DEMO credentials to verify
+          export AWS_ACCESS_KEY_ID=${{ secrets.DEMO_AWS_ACCESS_KEY }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.DEMO_AWS_SECRET_KEY }}
           
-      #     aws ec2 describe-images --owners self --query 'Images[*].[ImageId,Name,CreationDate]' --output table | head -n 10
+          aws ec2 describe-images --owners self --query 'Images[*].[ImageId,Name,CreationDate]' --output table | head -n 10
         
-      #       # Run the GCP migration script after GCP Machine Image is verified
-      # ####
-      # # - name: Migrate GCP Machine Image to DEMO Project
-      # #   run: |
-      # #     echo "Running GCP migration script..."
-          
-      # #     # Make the script executable
-      # #     chmod +x infra/packer/gcp_migration.sh
-          
-      # #     # Run the script with zone parameter
-      # #     ./infra/packer/gcp_migration.sh us-east1-b
-          
-      # #     # Verify the machine image in the DEMO project
-      # #     echo "Verifying Machine Image in DEMO project..."
-          
-      # #     # Temporarily authenticate with DEMO credentials to verify
-      # #     gcloud auth activate-service-account --key-file="gcp-demo-credentials.json"
-      # #     gcloud config set project ${GCP_DEMO_PROJECT_ID}
-          
-      # #     gcloud compute images list --project=${GCP_DEMO_PROJECT_ID} --filter="name:copy-custom-nodejs-mysql" --limit=5
-      # #     gcloud compute machine-images list --project=${GCP_DEMO_PROJECT_ID} --filter="name:mi-demo-custom-nodejs-mysql" --limit=5
-
-      # # Set up Terraform for GCP migration
-      # - name: Setup Terraform for GCP
-      #   uses: hashicorp/setup-terraform@v2
-      #   with:
-      #     terraform_version: latest
-
-      # # Prepare GCP Migration
-      # - name: Prepare GCP Migration
+            # Run the GCP migration script after GCP Machine Image is verified
+      ####
+      # - name: Migrate GCP Machine Image to DEMO Project
       #   run: |
-      #     echo '${{ secrets.DEV_GCP_KEY }}' > gcp-dev-credentials.json
-      #     echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
-      #     echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-      #     echo '${{ secrets.DEMO_GCP_KEY }}' > gcp-demo-credentials.json
-      #     echo "GCP_DEMO_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-
-      #     cp gcp-demo-credentials.json infra/terraform/gcp/gcp-demo-credentials.json
-      #     cp gcp-dev-credentials.json infra/terraform/gcp/gcp-dev-credentials.json
-
       #     echo "Running GCP migration script..."
           
-      #     # Make the preparation script executable
-      #     chmod +x infra/terraform/gcp/prepare-gcp-migration.sh
+      #     # Make the script executable
+      #     chmod +x infra/packer/gcp_migration.sh
           
       #     # Run the script with zone parameter
-      #     cd infra/terraform/gcp
-      #     ./prepare-gcp-migration.sh us-east1-b
+      #     ./infra/packer/gcp_migration.sh us-east1-b
+          
+      #     # Verify the machine image in the DEMO project
+      #     echo "Verifying Machine Image in DEMO project..."
+          
+      #     # Temporarily authenticate with DEMO credentials to verify
+      #     gcloud auth activate-service-account --key-file="gcp-demo-credentials.json"
+      #     gcloud config set project ${GCP_DEMO_PROJECT_ID}
+          
+      #     gcloud compute images list --project=${GCP_DEMO_PROJECT_ID} --filter="name:copy-custom-nodejs-mysql" --limit=5
+      #     gcloud compute machine-images list --project=${GCP_DEMO_PROJECT_ID} --filter="name:mi-demo-custom-nodejs-mysql" --limit=5
 
-      # # Run Terraform for GCP Migration
-      # - name: Run Terraform for GCP Migration
-      #   working-directory: infra/terraform/gcp
-      #   run: |
-      #     terraform init
-      #     terraform apply -auto-approve -var-file=gcp_migration.tfvars
-          
-      # # Verify the machine images
-      # - name: Verify GCP Machine Images
-      #   run: |
-      #     # Verify the machine images in both projects
-      #     echo "Verifying Machine Images..."
-          
-      #     # Verify in DEV project
-      #     echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
-      #     echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-      #     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-      #     gcloud config set project $GCP_PROJECT_ID
-      #     gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-custom-nodejs-mysql'" --limit=5
-          
-      #     # Verify in DEMO project
-      #     echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-demo-credentials.json" >> $GITHUB_ENV
-      #     echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-      #     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-      #     gcloud config set project $GCP_PROJECT_ID
-      #     gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-demo-custom-nodejs-mysql'" --limit=5
+      # Set up Terraform for GCP migration
+      - name: Setup Terraform for GCP
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: latest
 
-      # # Clean up credentials after build
-      # - name: Clean Up Credentials
-      #   if: always()
-      #   run: |
-      #     rm -f gcp-dev-credentials.json gcp-demo-credentials.json
+      # Prepare GCP Migration
+      - name: Prepare GCP Migration
+        run: |
+          echo '${{ secrets.DEV_GCP_KEY }}' > gcp-dev-credentials.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
+          echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+          echo '${{ secrets.DEMO_GCP_KEY }}' > gcp-demo-credentials.json
+          echo "GCP_DEMO_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+
+          cp gcp-demo-credentials.json infra/terraform/gcp/gcp-demo-credentials.json
+          cp gcp-dev-credentials.json infra/terraform/gcp/gcp-dev-credentials.json
+
+          echo "Running GCP migration script..."
+          
+          # Make the preparation script executable
+          chmod +x infra/terraform/gcp/prepare-gcp-migration.sh
+          
+          # Run the script with zone parameter
+          cd infra/terraform/gcp
+          ./prepare-gcp-migration.sh us-east1-b
+
+      # Run Terraform for GCP Migration
+      - name: Run Terraform for GCP Migration
+        working-directory: infra/terraform/gcp
+        run: |
+          terraform init
+          terraform apply -auto-approve -var-file=gcp_migration.tfvars
+          
+      # Verify the machine images
+      - name: Verify GCP Machine Images
+        run: |
+          # Verify the machine images in both projects
+          echo "Verifying Machine Images..."
+          
+          # Verify in DEV project
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
+          echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+          gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+          gcloud config set project $GCP_PROJECT_ID
+          gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-custom-nodejs-mysql'" --limit=5
+          
+          # Verify in DEMO project
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-demo-credentials.json" >> $GITHUB_ENV
+          echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+          gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+          gcloud config set project $GCP_PROJECT_ID
+          gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-demo-custom-nodejs-mysql'" --limit=5
+
+      # Clean up credentials after build
+      - name: Clean Up Credentials
+        if: always()
+        run: |
+          rm -f gcp-dev-credentials.json gcp-demo-credentials.json
