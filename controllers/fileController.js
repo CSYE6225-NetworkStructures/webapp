@@ -37,20 +37,18 @@ const uploadFile = async (req, res) => {
         // Check if file exists in request
         const file = req.file;
         if (!file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+            return res.status(400).end();;
         }
 
         // Validate file is using the key name "file"
         if (req.file.fieldname !== 'file') {
-            return res.status(400).json({ error: 'File must be uploaded with key name "file"' });
+            return res.status(400).end();;
         }
 
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
         if (!allowedTypes.includes(file.mimetype)) {
-            return res.status(400).json({ 
-                error: 'Only image files of type jpg, jpeg, png, or gif are allowed' 
-            });
+            return res.status(400).end();;
         }
 
         const fileKey = `${uuidv4()}${path.extname(file.originalname)}`;
@@ -99,7 +97,7 @@ const getFile = async (req, res) => {
 
     try {
         const fileMetadata = await FileMetadata.findByPk(req.params.id);
-        if (!fileMetadata) return res.status(404).json({ error: 'File not found' });
+        if (!fileMetadata) return res.status(404).end();;
 
         res.json({
             id: fileMetadata.id,
@@ -131,7 +129,7 @@ const deleteFile = async (req, res) => {
     
     try {
         const fileMetadata = await FileMetadata.findByPk(req.params.id);
-        if (!fileMetadata) return res.status(404).json({ error: 'File not found' });
+        if (!fileMetadata) return res.status(404).end();;
 
         const fileKey = fileMetadata.filePath.split('/').pop();
         await s3.send(new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET_NAME, Key: fileKey }));

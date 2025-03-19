@@ -9,11 +9,7 @@ router.route('/file')
     .post((req, res, next) => {
         upload.single('file')(req, res, (err) => {
             if (err) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'File upload error: Please use "file" as the field name for your file upload',
-                    error: err.message
-                });
+                return res.status(400).end();
             }
             next();
         });
