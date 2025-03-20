@@ -101,7 +101,7 @@ const uploadFile = async (req, res) => {
                 // Continue with the original error response even if cleanup fails
             }
         }
-        return res.status(500).json({ error: err.message });
+        return res.status(503).end();
     }
 };
 
@@ -133,7 +133,7 @@ const getFile = async (req, res) => {
             upload_date: fileMetadata.uploadDate
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(503).end();
     }
 };
 
@@ -164,7 +164,7 @@ const deleteFile = async (req, res) => {
         await fileMetadata.destroy();
         res.status(204).send();
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(503).end();
     }
 };
 
