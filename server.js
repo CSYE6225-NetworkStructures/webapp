@@ -2,6 +2,7 @@ const express = require('express');
 const { createDatabase } = require('./config/database');
 const { connectDB } = require('./models');
 const healthCheckRoutes = require('./routes/healthCheck');
+const fileRoutes = require('./routes/file');
 
 require('dotenv').config();
 
@@ -10,6 +11,7 @@ app.disable('x-powered-by');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(healthCheckRoutes);
+app.use('/v1', fileRoutes);
 
 // Middleware to handle unimplemented routes
 app.use((req, res) => {

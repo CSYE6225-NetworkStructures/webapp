@@ -116,6 +116,7 @@ jobs:
             -var "target_account_id=${DEMO_ACCOUNT_ID}" \
             -var "cloud_gcp_source_project=${GCP_PROJECT_ID}" \
             -var "cloud_gcp_target_project=${GCP_DEMO_PROJECT_ID}" \
+            -var "gcp_target_service_account=${{ secrets.GCP_DEMO_ACCOUNT_EMAIL }}" \
             machine-image.pkr.hcl
 
       - name: Verify AWS AMI Creation
@@ -129,7 +130,7 @@ jobs:
           aws ec2 describe-images --owners self --query 'Images[*].[ImageId,Name,CreationDate]' --output table --filters "Name=name,Values=custom-nodejs-mysql-*" | head -n 10
           
           echo "Latest AMI ID: ${LATEST_AMI_ID}"
-      
+      ###########
       - name: Verify GCP Machine Image Creation
         run: |
           echo "Verifying GCP Machine Image creation..."

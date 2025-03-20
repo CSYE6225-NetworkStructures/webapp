@@ -33,6 +33,8 @@ DB_USER=root
 DB_PASSWORD=Welcome@1234!!
 DB_NAME=health_check
 PORT=8080
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=<bucket nme>
 EOF
 
 sudo chmod 600 /opt/myapp/.env

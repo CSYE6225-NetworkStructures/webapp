@@ -1,6 +1,7 @@
 [Unit]
 Description=My Node.js Application
 After=network.target
+ConditionPathExists=/opt/myapp/.env
 
 [Service]
 ExecStart=/opt/myapp/webapp

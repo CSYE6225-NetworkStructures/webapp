@@ -29,6 +29,12 @@ variable "cloud_gcp_target_project" {
   description = "GCP DEMO project ID to share the image with"
 }
 
+variable "gcp_target_service_account" {
+  type        = string
+  default     = ""
+  description = "Service account email from target project that needs image access"
+}
+
 variable "cloud_gcp_vm_type" {
   type    = string
   default = "e2-medium"
@@ -77,6 +83,9 @@ source "googlecompute" "ubuntu" {
   image_description    = "Custom GCP image with Node.js and MySQL"
   ssh_username         = "ubuntu"
   wait_to_add_ssh_keys = "10s"
+
+  # Share image with other project
+  # image_project_ids    = [var.cloud_gcp_target_project]
 }
 
 # AWS AMI Build
@@ -100,25 +109,57 @@ build {
     "source.amazon-ebs.ubuntu"
   ]
 
+  # Common files for both GCP & AWS
   provisioner "file" {
     source      = "dist/webapp"
     destination = "/tmp/webapp"
   }
 
   provisioner "file" {
+    only        = ["googlecompute.ubuntu"]
     source      = "webapp.service"
     destination = "/tmp/webapp.service"
   }
 
+  # Setup for GCP
   provisioner "file" {
-    source      = "setup.sh"
-    destination = "/tmp/setup.sh"
+    only        = ["googlecompute.ubuntu"]
+    source      = "setup_gcp.sh"
+    destination = "/tmp/setup_gcp.sh"
   }
 
   provisioner "shell" {
+    only = ["googlecompute.ubuntu"]
     inline = [
-      "chmod +x /tmp/setup.sh",
-      "sudo /tmp/setup.sh"
+      "chmod +x /tmp/setup_gcp.sh",
+      "sudo /tmp/setup_gcp.sh"
+    ]
+  }
+
+  # Setup for AWS
+  provisioner "file" {
+    only        = ["amazon-ebs.ubuntu"]
+    source      = "setup_aws.sh"
+    destination = "/tmp/setup_aws.sh"
+  }
+
+  provisioner "shell" {
+    only = ["amazon-ebs.ubuntu"]
+    inline = [
+      "chmod +x /tmp/setup_aws.sh",
+      "sudo /tmp/setup_aws.sh"
+    ]
+  }
+
+  post-processor "shell-local" {
+    only = ["googlecompute.ubuntu"]
+
+    execute_command = ["/bin/sh", "-c", "{{.Vars}} {{.Script}}"]
+
+    inline = [
+      "IMAGE_NAME=$(gcloud compute images list --project=${var.cloud_gcp_source_project} --filter='name~custom-nodejs-mysql' --sort-by=~creationTimestamp --limit=1 --format='value(name)')",
+      "echo \"Sharing image $IMAGE_NAME with service account ${var.gcp_target_service_account}\"",
+      "gcloud compute images add-iam-policy-binding $IMAGE_NAME --project=${var.cloud_gcp_source_project} --member='serviceAccount:${var.gcp_target_service_account}' --role='roles/compute.imageUser'"
     ]
   }
 }
