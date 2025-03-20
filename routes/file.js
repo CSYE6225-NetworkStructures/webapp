@@ -11,6 +11,13 @@ router.route('/file')
             if (err) {
                 return res.status(400).end();
             }
+
+            // Check if there are any additional fields in form-data
+            const otherFields = Object.keys(req.body);
+            if (otherFields.length > 0) {
+                return res.status(400).end();
+            }
+
             next();
         });
     }, uploadFile)

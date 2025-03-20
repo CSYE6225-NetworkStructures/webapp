@@ -19,6 +19,30 @@ This project implements a backend (API-only) web application with a health check
   - `405 Method Not Allowed`: Unsupported HTTP method.
   - `400 Bad Request`: Request contains a payload.
 
+### File Upload Endpoint (`/v1/file`)
+- **Method**: `POST`
+- **Response Codes**:
+  - `201 Created`: Record Created successfully.
+  - `503 Service Unavailable`: Database insert failed.
+  - `405 Method Not Allowed`: Unsupported HTTP method.
+  - `400 Bad Request`: Request contains a header.
+
+### File Upload Endpoint (`/v1/file/:id`)
+- **Method**: `GET`
+- **Response Codes**:
+  - `200 OK`: Displays the file details.
+  - `503 Service Unavailable`: Database insert failed.
+  - `405 Method Not Allowed`: Unsupported HTTP method.
+  - `400 Bad Request`: Request contains a payload or header.
+
+### File Upload Endpoint (`/v1/file/:id`)
+- **Method**: `DELETE`
+- **Response Codes**:
+  - `204 No Content`: Deletes the file.
+  - `503 Service Unavailable`: Database insert failed.
+  - `405 Method Not Allowed`: Unsupported HTTP method.
+  - `400 Bad Request`: Request contains a payload or header.
+
 ## Unit Tests
 The project includes unit tests located in the `__tests__` directory. These tests ensure the functionality and reliability of critical API features, including the health check endpoint.
 
