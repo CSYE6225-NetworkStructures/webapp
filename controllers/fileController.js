@@ -14,10 +14,13 @@ const allowedHeaders = [
     'user-agent',
     'accept',
     'accept-encoding',
-    'connection',
+    'connection'
+];
+
+const allowedHeadersForUpload = [
     'content-type',
     'content-length'
-];
+]
 
 const uploadFile = async (req, res) => {
     if (req.method === "HEAD") {
@@ -26,32 +29,40 @@ const uploadFile = async (req, res) => {
 
     const incomingHeaders = Object.keys(req.headers);
     const invalidHeaders = incomingHeaders.filter(
-        (header) => !allowedHeaders.includes(header.toLowerCase())
+        (header) => !allowedHeaders.includes(header.toLowerCase()) && 
+        !allowedHeadersForUpload.includes(header.toLowerCase())
     );
 
     if (invalidHeaders.length > 0) {
-    return sendResponse(res, 400);
+        return sendResponse(res, 400);
     }
+
+    // Variables to track S3 upload state
+    let fileUploaded = false;
+    let fileKey = null;
 
     try {
         // Check if file exists in request
         const file = req.file;
         if (!file) {
-            return res.status(400).end();;
+            return res.status(400).end();
         }
 
         // Validate file is using the key name "file"
         if (req.file.fieldname !== 'file') {
-            return res.status(400).end();;
+            return res.status(400).end();
         }
 
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
         if (!allowedTypes.includes(file.mimetype)) {
-            return res.status(400).end();;
+            return res.status(400).end();
         }
 
-        const fileKey = `${uuidv4()}${path.extname(file.originalname)}`;
+        // Generate unique file key
+        fileKey = `${uuidv4()}${path.extname(file.originalname)}`;
+        
+        // Upload to S3
         const uploadParams = {
             Bucket: process.env.S3_BUCKET_NAME,
             Key: fileKey,
@@ -59,7 +70,9 @@ const uploadFile = async (req, res) => {
             ContentType: file.mimetype,
         };
         await s3.send(new PutObjectCommand(uploadParams));
+        fileUploaded = true;
 
+        // Try to create database entry
         const fileMetadata = await FileMetadata.create({
             fileName: file.originalname,
             filePath: `${process.env.S3_BUCKET_NAME}/${fileKey}`,
@@ -67,14 +80,28 @@ const uploadFile = async (req, res) => {
             size: file.size
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             id: fileMetadata.id,
             file_name: fileMetadata.fileName,
             url: fileMetadata.filePath,
             upload_date: fileMetadata.uploadDate
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        // If the file was uploaded to S3 but DB entry failed, clean up the S3 object
+        if (fileUploaded && fileKey) {
+            try {
+                const deleteParams = {
+                    Bucket: process.env.S3_BUCKET_NAME,
+                    Key: fileKey
+                };
+                await s3.send(new DeleteObjectCommand(deleteParams));
+                console.log(`Cleaned up S3 file ${fileKey} after database error`);
+            } catch (deleteErr) {
+                console.error(`Failed to clean up S3 file ${fileKey}:`, deleteErr);
+                // Continue with the original error response even if cleanup fails
+            }
+        }
+        return res.status(500).json({ error: err.message });
     }
 };
 

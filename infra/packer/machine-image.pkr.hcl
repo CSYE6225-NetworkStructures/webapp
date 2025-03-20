@@ -116,18 +116,18 @@ build {
   }
 
   provisioner "file" {
-    only = ["googlecompute.ubuntu"]
+    only        = ["googlecompute.ubuntu"]
     source      = "webapp.service"
     destination = "/tmp/webapp.service"
   }
 
   # Setup for GCP
   provisioner "file" {
-    only = ["googlecompute.ubuntu"]
+    only        = ["googlecompute.ubuntu"]
     source      = "setup_gcp.sh"
     destination = "/tmp/setup_gcp.sh"
   }
-  
+
   provisioner "shell" {
     only = ["googlecompute.ubuntu"]
     inline = [
@@ -138,7 +138,7 @@ build {
 
   # Setup for AWS
   provisioner "file" {
-    only = ["amazon-ebs.ubuntu"]
+    only        = ["amazon-ebs.ubuntu"]
     source      = "setup_aws.sh"
     destination = "/tmp/setup_aws.sh"
   }
@@ -152,10 +152,10 @@ build {
   }
 
   post-processor "shell-local" {
-  only = ["googlecompute.ubuntu"]
-  
-  execute_command = ["/bin/sh", "-c", "{{.Vars}} {{.Script}}"]
-  
+    only = ["googlecompute.ubuntu"]
+
+    execute_command = ["/bin/sh", "-c", "{{.Vars}} {{.Script}}"]
+
     inline = [
       "IMAGE_NAME=$(gcloud compute images list --project=${var.cloud_gcp_source_project} --filter='name~custom-nodejs-mysql' --sort-by=~creationTimestamp --limit=1 --format='value(name)')",
       "echo \"Sharing image $IMAGE_NAME with service account ${var.gcp_target_service_account}\"",
