@@ -20,6 +20,8 @@ This project implements a backend (API-only) web application with a health check
   - `405 Method Not Allowed`: Unsupported HTTP method.
   - `400 Bad Request`: Request contains a payload.
 
+  
+
 ### File Upload Endpoint (`/v1/file`)
 - **Method**: `POST`
 - **Response Codes**:
