@@ -12,6 +12,7 @@ This project implements a backend (API-only) web application with a health check
 
 ## API Details
 
+
 ### Health Check Endpoint (`/healthz`)
 - **Method**: `GET`
 - **Response Codes**:
