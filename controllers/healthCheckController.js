@@ -12,6 +12,14 @@ const permittedHeaders = [
   'accept',
   'accept-encoding',
   'connection',
+  //Load Balancer headers
+  'x-forwarded-for',
+  'x-forwarded-proto',
+  'x-forwarded-port',
+  'x-amzn-trace-id',
+  'x-forwarded-host',
+  'x-amz-cf-id',
+  'x-amzn-requestid'
 ];
 
 const performHealthCheck = async (req, res) => {
