@@ -1,9 +1,9 @@
 name: WebApp Unit Testing
 
 on:
-  pull_request:
-    branches:
-      - main
+    pull_request:
+      branches:
+        - main
 
 jobs:
   run-tests:

@@ -5,11 +5,108 @@ on:
     branches:
       - main
 
+
 jobs:
+  run-unit-tests:
+          name: Run Unit Tests
+          runs-on: ubuntu-latest
+          if: github.repository_owner == 'CSYE6225-NetworkStructures'
+      
+          services:
+            mysql:
+              image: mysql:8.0
+              env:
+                MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+                MYSQL_DATABASE: ${{ secrets.DB_NAME }}
+              ports:
+                - 3306:3306
+      
+          steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+      
+            - name: Update and Install Dependencies
+              run: sudo apt update && sudo apt upgrade -y
+      
+            - name: Wait for MySQL to Be Ready
+              run: |
+                for i in {30..0}; do
+                  if mysqladmin ping -h 127.0.0.1 -uroot -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" --silent; then
+                    echo "MySQL is up and running"
+                    break
+                  fi
+                  echo "Waiting for MySQL..."
+                  sleep 2
+                done
+                if [ "$i" = 0 ]; then
+                  echo "ERROR: MySQL failed to start"
+                  exit 1
+                fi
+      
+            - name: Create `.env` File
+              run: |
+                cat <<EOF > .env
+                DB_HOST=${{ secrets.DB_HOST }}
+                DB_PORT=${{ secrets.DB_PORT }}
+                DB_USER=${{ secrets.DB_USER }}
+                DB_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+                DB_NAME=${{ secrets.DB_NAME }}
+                PORT=${{ secrets.PORT }}
+                EOF
+      
+            - name: Install Project Dependencies
+              run: npm install
+      
+            - name: Run Tests
+              run: npm test
+
+  validate_packer_File:
+    name: Validate Packer Script
+    runs-on: ubuntu-latest
+    needs: run-unit-tests
+    if: github.repository_owner == 'CSYE6225-NetworkStructures'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install pkg globally
+        run: npm install -g pkg
+
+      - name: Build Application with pkg
+        run: |
+          npm install
+          pkg server.js --output infra/packer/dist/webapp --targets node18-linux-x64
+          chmod +x infra/packer/dist/webapp
+          echo "Binary created at infra/packer/dist/webapp"
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@v2
+        with:
+          version: latest
+
+      - name: Initialize Packer
+        working-directory: infra/packer
+        run: packer init .
+
+      - name: Check Packer Formatting
+        working-directory: infra/packer
+        run: |
+          if packer fmt -check -diff .; then
+            echo "Packer format is correct."
+          else
+            echo "Packer format check failed. Run 'packer fmt' locally to fix formatting."
+            exit 1
+          fi
+
+      - name: Validate Packer Configuration
+        working-directory: infra/packer
+        run: packer validate machine-image.pkr.hcl
+
   build_images:
     name: Build and Share AMI/Machine Images
     runs-on: ubuntu-latest
-    # needs: validate_packer
+    needs: validate_packer_File
 
     steps:
       - name: Checkout Repository
@@ -109,7 +206,7 @@ jobs:
         working-directory: infra/packer
         run: packer init .
 
-      - name: Build AMI and Machine Images
+      - name: Build AMI and Machine Images and Share with DEMO AWS Account
         working-directory: infra/packer
         run: |
           packer build \
@@ -131,132 +228,329 @@ jobs:
           
           echo "Latest AMI ID: ${LATEST_AMI_ID}"
       ###########
-      - name: Verify GCP Machine Image Creation
-        run: |
-          echo "Verifying GCP Machine Image creation..."
-          gcloud compute images list --project=${GCP_PROJECT_ID} --filter="name:custom-nodejs-mysql" --limit=5
-
-      # Run the preami.sh script before Terraform
-      - name: Run preami.sh with Latest AMI ID
-        working-directory: infra/terraform/aws
-        run: |
-          # Make sure the script is executable
-          chmod +x preami.sh
-          
-          # Set environment variables for the script
-          export DEV_AWS_ACCESS_KEY='${{ secrets.DEV_AWS_ACCESS_KEY }}'
-          export DEV_AWS_SECRET_KEY='${{ secrets.DEV_AWS_SECRET_KEY }}'
-          export DEMO_AWS_ACCESS_KEY='${{ secrets.DEMO_AWS_ACCESS_KEY }}'
-          export DEMO_AWS_SECRET_KEY='${{ secrets.DEMO_AWS_SECRET_KEY }}'
-          
-          # Run the script with the latest AMI ID
-          ./preami.sh ${LATEST_AMI_ID}
-
-      # Setup Terraform for AMI migration
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: latest
-
-      # Initialize and Apply Terraform using existing file
-      - name: Run Terraform to Migrate AMI
-        working-directory: infra/terraform/aws
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -var="source_ami_id=${LATEST_AMI_ID}" \
-            -var="source_aws_access_key=${{ secrets.DEV_AWS_ACCESS_KEY }}" \
-            -var="source_aws_secret_key=${{ secrets.DEV_AWS_SECRET_KEY }}" \
-            -var="target_aws_access_key=${{ secrets.DEMO_AWS_ACCESS_KEY }}" \
-            -var="target_aws_secret_key=${{ secrets.DEMO_AWS_SECRET_KEY }}" \
-            -var="aws_region=us-east-1"
-
-      # Verify the AMI was copied successfully
-      - name: Verify AMI Copy in DEMO Account
-        run: |
-          echo "Verifying AMI copy in DEMO account..."
-          
-          # Temporarily use DEMO credentials to verify
-          export AWS_ACCESS_KEY_ID=${{ secrets.DEMO_AWS_ACCESS_KEY }}
-          export AWS_SECRET_ACCESS_KEY=${{ secrets.DEMO_AWS_SECRET_KEY }}
-          
-          aws ec2 describe-images --owners self --query 'Images[*].[ImageId,Name,CreationDate]' --output table | head -n 10
-        
-            # Run the GCP migration script after GCP Machine Image is verified
-      ####
-      # - name: Migrate GCP Machine Image to DEMO Project
+      # - name: Verify GCP Machine Image Creation
       #   run: |
+      #     echo "Verifying GCP Machine Image creation..."
+      #     gcloud compute images list --project=${GCP_PROJECT_ID} --filter="name:custom-nodejs-mysql" --limit=5
+############
+      # # Run the preami.sh script before Terraform
+      # - name: Run preami.sh with Latest AMI ID
+      #   working-directory: infra/terraform/aws
+      #   run: |
+      #     # Make sure the script is executable
+      #     chmod +x preami.sh
+          
+      #     # Set environment variables for the script
+      #     export DEV_AWS_ACCESS_KEY='${{ secrets.DEV_AWS_ACCESS_KEY }}'
+      #     export DEV_AWS_SECRET_KEY='${{ secrets.DEV_AWS_SECRET_KEY }}'
+      #     export DEMO_AWS_ACCESS_KEY='${{ secrets.DEMO_AWS_ACCESS_KEY }}'
+      #     export DEMO_AWS_SECRET_KEY='${{ secrets.DEMO_AWS_SECRET_KEY }}'
+          
+      #     # Run the script with the latest AMI ID
+      #     ./preami.sh ${LATEST_AMI_ID}
+
+      # # Setup Terraform for AMI migration
+      # - name: Setup Terraform
+      #   uses: hashicorp/setup-terraform@v2
+      #   with:
+      #     terraform_version: latest
+
+      # # Initialize and Apply Terraform using existing file
+      # - name: Run Terraform to Migrate AMI
+      #   working-directory: infra/terraform/aws
+      #   run: |
+      #     terraform init
+      #     terraform apply -auto-approve \
+      #       -var="source_ami_id=${LATEST_AMI_ID}" \
+      #       -var="source_aws_access_key=${{ secrets.DEV_AWS_ACCESS_KEY }}" \
+      #       -var="source_aws_secret_key=${{ secrets.DEV_AWS_SECRET_KEY }}" \
+      #       -var="target_aws_access_key=${{ secrets.DEMO_AWS_ACCESS_KEY }}" \
+      #       -var="target_aws_secret_key=${{ secrets.DEMO_AWS_SECRET_KEY }}" \
+      #       -var="aws_region=us-east-1"
+
+      # # Verify the AMI was copied successfully
+      # - name: Verify AMI Copy in DEMO Account
+      #   run: |
+      #     echo "Verifying AMI in DEMO account..."
+          
+      #     # Temporarily use DEMO credentials to verify
+      #     export AWS_ACCESS_KEY_ID=${{ secrets.DEMO_AWS_ACCESS_KEY }}
+      #     export AWS_SECRET_ACCESS_KEY=${{ secrets.DEMO_AWS_SECRET_KEY }}
+          
+      #     # List available AMIs to verify sharing worked
+      #     echo "Available AMIs in DEMO account:"
+      #     aws ec2 describe-images --owners self --query 'Images[*].[ImageId,Name,CreationDate]' --output table | head -n 10
+          
+      #     echo "We'll use the AMI ID from DEV account: $LATEST_AMI_ID"
+#############
+      # Reconfigure AWS CLI to use DEMO account credentials permanently
+      - name: Configure AWS DEMO Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.DEMO_AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.DEMO_AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      # Get Launch Template ID to update
+      - name: Get Launch Template Details
+        run: |
+          echo "Getting Launch Template details..."
+          
+          # Get the Launch Template ID 
+          LAUNCH_TEMPLATE_ID=$(aws ec2 describe-launch-templates --query 'LaunchTemplates[?starts_with(LaunchTemplateName, `csye6225_asg`)].LaunchTemplateId' --output text)
+          
+          if [ -z "$LAUNCH_TEMPLATE_ID" ]; then
+            echo "Error: Could not find Launch Template with name starting with 'csye6225_asg'"
+            exit 1
+          fi
+          
+          echo "Launch Template ID: $LAUNCH_TEMPLATE_ID"
+          echo "LAUNCH_TEMPLATE_ID=$LAUNCH_TEMPLATE_ID" >> $GITHUB_ENV
+          
+          # Get the Latest Version Number - with proper error handling
+          LATEST_VERSION=$(aws ec2 describe-launch-template-versions \
+            --launch-template-id "$LAUNCH_TEMPLATE_ID" \
+            --versions '$Latest' \
+            --query 'LaunchTemplateVersions[0].VersionNumber' \
+            --output text)
+            
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Error: Could not retrieve latest version for Launch Template"
+            exit 1
+          fi
+          
+          echo "Latest Version: $LATEST_VERSION"
+          echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+
+      # Create new Launch Template version with latest AMI
+      - name: Create New Launch Template Version
+        run: |
+          echo "Creating new Launch Template version with AMI: $LATEST_AMI_ID"
+          
+          # Debug AMI ID
+          if [ -z "$LATEST_AMI_ID" ]; then
+            echo "ERROR: LATEST_AMI_ID is empty. Cannot proceed with template update."
+            exit 1
+          fi
+          
+          # Get the current template data
+          echo "Getting template data..."
+          TEMPLATE_DATA=$(aws ec2 describe-launch-template-versions \
+            --launch-template-id "$LAUNCH_TEMPLATE_ID" \
+            --versions $LATEST_VERSION \
+            --query 'LaunchTemplateVersions[0].LaunchTemplateData' \
+            --output json)
+          
+          echo "Template data retrieved successfully"
+          
+          if [ -z "$TEMPLATE_DATA" ]; then
+            echo "Error: Could not retrieve template data"
+            exit 1
+          fi
+          
+          # Update the ImageId in the template data with the new AMI ID
+          echo "Updating ImageId in template data..."
+          UPDATED_TEMPLATE_DATA=$(echo "$TEMPLATE_DATA" | jq --arg ami "$LATEST_AMI_ID" '.ImageId = $ami')
+          
+          # Write the updated template data to a file
+          echo "$UPDATED_TEMPLATE_DATA" > updated_template.json
+          
+          # Create a new version of the Launch Template with the updated AMI
+          echo "Creating new launch template version..."
+          NEW_VERSION=$(aws ec2 create-launch-template-version \
+            --launch-template-id "$LAUNCH_TEMPLATE_ID" \
+            --version-description "Updated AMI to $LATEST_AMI_ID" \
+            --launch-template-data file://updated_template.json \
+            --query 'LaunchTemplateVersion.VersionNumber' \
+            --output text)
+          
+          if [ -z "$NEW_VERSION" ]; then
+            echo "Error: Failed to create new Launch Template version"
+            exit 1
+          fi
+            
+          echo "New Launch Template Version: $NEW_VERSION"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      # Get Auto Scaling Group Name
+      - name: Get Auto Scaling Group Details
+        run: |
+          echo "Getting Auto Scaling Group details..."
+          
+          # Get the Auto Scaling Group Name
+          ASG_NAME=$(aws autoscaling describe-auto-scaling-groups \
+            --query "AutoScalingGroups[?LaunchTemplate.LaunchTemplateId=='$LAUNCH_TEMPLATE_ID'].AutoScalingGroupName" \
+            --output text)
+            
+          if [ -z "$ASG_NAME" ]; then
+            echo "Error: No Auto Scaling Group found using the Launch Template ID: $LAUNCH_TEMPLATE_ID"
+            exit 1
+          fi
+            
+          echo "Auto Scaling Group Name: $ASG_NAME"
+          echo "ASG_NAME=$ASG_NAME" >> $GITHUB_ENV
+
+      # [NEW] Update Launch Template Default Version
+      - name: Update Launch Template Default Version
+        run: |
+          echo "Setting new version as default for Launch Template"
+          aws ec2 modify-launch-template \
+            --launch-template-id "$LAUNCH_TEMPLATE_ID" \
+            --default-version "$NEW_VERSION"
+          
+          echo "Launch Template default version updated to: $NEW_VERSION"
+
+      # Start Instance Refresh
+      - name: Start Instance Refresh
+        run: |
+          echo "Starting instance refresh for Auto Scaling Group: $ASG_NAME"
+          
+          # Start the instance refresh and capture the refresh ID
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --preferences '{"MinHealthyPercentage": 90, "InstanceWarmup": 300}' \
+            --query 'InstanceRefreshId' \
+            --output text)
+            
+          if [ -z "$REFRESH_ID" ]; then
+            echo "Error: Failed to start instance refresh"
+            exit 1
+          fi
+            
+          echo "Instance Refresh ID: $REFRESH_ID"
+          echo "REFRESH_ID=$REFRESH_ID" >> $GITHUB_ENV
+
+      # Wait for Instance Refresh to Complete
+      - name: Wait for Instance Refresh to Complete
+        run: |
+          echo "Waiting for instance refresh to complete..."
+          
+          # Set up a timeout (30 minutes = 2400 seconds)
+          TIMEOUT=2400
+          START_TIME=$(date +%s)
+          
+          # Loop until instance refresh is complete, failed, or timeout
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
+            if [ $ELAPSED -gt $TIMEOUT ]; then
+              echo "Timeout waiting for instance refresh to complete after $(($TIMEOUT / 60)) minutes"
+              exit 1
+            fi
+            
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name "$ASG_NAME" \
+              --instance-refresh-ids "$REFRESH_ID" \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text)
+              
+            PROGRESS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name "$ASG_NAME" \
+              --instance-refresh-ids "$REFRESH_ID" \
+              --query 'InstanceRefreshes[0].PercentageComplete' \
+              --output text)
+              
+            echo "Current status: $STATUS - Progress: $PROGRESS%"
+            
+            if [[ "$STATUS" == "Successful" ]]; then
+              echo "Instance refresh completed successfully"
+              break
+            elif [[ "$STATUS" == "Failed" || "$STATUS" == "Cancelled" ]]; then
+              echo "Instance refresh failed or was cancelled"
+              
+              # Get the reason for failure
+              REASON=$(aws autoscaling describe-instance-refreshes \
+                --auto-scaling-group-name "$ASG_NAME" \
+                --instance-refresh-ids "$REFRESH_ID" \
+                --query 'InstanceRefreshes[0].StatusReason' \
+                --output text)
+                
+              echo "Reason: $REASON"
+              exit 1  # Fail the GitHub Action if refresh fails
+            fi
+            
+            # Show elapsed time in minutes
+            echo "Elapsed time: $(($ELAPSED / 60)) minutes $(($ELAPSED % 60)) seconds"
+            echo "Waiting 30 seconds before checking again..."
+            sleep 30
+          done
+          
+          # Verify the new instances are using the correct AMI
+          echo "Verifying that instances are running with the new AMI..."
+          INSTANCES=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
+            --output text)
+            
+          for INSTANCE_ID in $INSTANCES; do
+            AMI_ID=$(aws ec2 describe-instances \
+              --instance-ids "$INSTANCE_ID" \
+              --query 'Reservations[0].Instances[0].ImageId' \
+              --output text)
+              
+            echo "Instance $INSTANCE_ID is using AMI: $AMI_ID"
+            
+            if [[ "$AMI_ID" != "$LATEST_AMI_ID" ]]; then
+              echo "Warning: Instance $INSTANCE_ID is not using the expected AMI ($LATEST_AMI_ID)"
+            fi
+          done
+          
+          echo "Deployment complete!"
+          
+      # # Set up Terraform for GCP migration
+      # - name: Setup Terraform for GCP
+      #   uses: hashicorp/setup-terraform@v2
+      #   with:
+      #     terraform_version: latest
+
+      # # Prepare GCP Migration
+      # - name: Prepare GCP Migration
+      #   run: |
+      #     echo '${{ secrets.DEV_GCP_KEY }}' > gcp-dev-credentials.json
+      #     echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
+      #     echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+      #     echo '${{ secrets.DEMO_GCP_KEY }}' > gcp-demo-credentials.json
+      #     echo "GCP_DEMO_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+
+      #     cp gcp-demo-credentials.json infra/terraform/gcp/gcp-demo-credentials.json
+      #     cp gcp-dev-credentials.json infra/terraform/gcp/gcp-dev-credentials.json
+
       #     echo "Running GCP migration script..."
           
-      #     # Make the script executable
-      #     chmod +x infra/packer/gcp_migration.sh
+      #     # Make the preparation script executable
+      #     chmod +x infra/terraform/gcp/prepare-gcp-migration.sh
           
       #     # Run the script with zone parameter
-      #     ./infra/packer/gcp_migration.sh us-east1-b
-          
-      #     # Verify the machine image in the DEMO project
-      #     echo "Verifying Machine Image in DEMO project..."
-          
-      #     # Temporarily authenticate with DEMO credentials to verify
-      #     gcloud auth activate-service-account --key-file="gcp-demo-credentials.json"
-      #     gcloud config set project ${GCP_DEMO_PROJECT_ID}
-          
-      #     gcloud compute images list --project=${GCP_DEMO_PROJECT_ID} --filter="name:copy-custom-nodejs-mysql" --limit=5
-      #     gcloud compute machine-images list --project=${GCP_DEMO_PROJECT_ID} --filter="name:mi-demo-custom-nodejs-mysql" --limit=5
+      #     cd infra/terraform/gcp
+      #     ./prepare-gcp-migration.sh us-east1-b
 
-      # Set up Terraform for GCP migration
-      - name: Setup Terraform for GCP
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: latest
-
-      # Prepare GCP Migration
-      - name: Prepare GCP Migration
-        run: |
-          echo '${{ secrets.DEV_GCP_KEY }}' > gcp-dev-credentials.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
-          echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-          echo '${{ secrets.DEMO_GCP_KEY }}' > gcp-demo-credentials.json
-          echo "GCP_DEMO_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-
-          cp gcp-demo-credentials.json infra/terraform/gcp/gcp-demo-credentials.json
-          cp gcp-dev-credentials.json infra/terraform/gcp/gcp-dev-credentials.json
-
-          echo "Running GCP migration script..."
+      # # Run Terraform for GCP Migration
+      # - name: Run Terraform for GCP Migration
+      #   working-directory: infra/terraform/gcp
+      #   run: |
+      #     terraform init
+      #     terraform apply -auto-approve -var-file=gcp_migration.tfvars
           
-          # Make the preparation script executable
-          chmod +x infra/terraform/gcp/prepare-gcp-migration.sh
+      # # Verify the machine images
+      # - name: Verify GCP Machine Images
+      #   run: |
+      #     # Verify the machine images in both projects
+      #     echo "Verifying Machine Images..."
           
-          # Run the script with zone parameter
-          cd infra/terraform/gcp
-          ./prepare-gcp-migration.sh us-east1-b
-
-      # Run Terraform for GCP Migration
-      - name: Run Terraform for GCP Migration
-        working-directory: infra/terraform/gcp
-        run: |
-          terraform init
-          terraform apply -auto-approve -var-file=gcp_migration.tfvars
+      #     # Verify in DEV project
+      #     echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
+      #     echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+      #     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+      #     gcloud config set project $GCP_PROJECT_ID
+      #     gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-custom-nodejs-mysql'" --limit=5
           
-      # Verify the machine images
-      - name: Verify GCP Machine Images
-        run: |
-          # Verify the machine images in both projects
-          echo "Verifying Machine Images..."
-          
-          # Verify in DEV project
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-dev-credentials.json" >> $GITHUB_ENV
-          echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEV_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-          gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-          gcloud config set project $GCP_PROJECT_ID
-          gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-custom-nodejs-mysql'" --limit=5
-          
-          # Verify in DEMO project
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-demo-credentials.json" >> $GITHUB_ENV
-          echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
-          gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-          gcloud config set project $GCP_PROJECT_ID
-          gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-demo-custom-nodejs-mysql'" --limit=5
+      #     # Verify in DEMO project
+      #     echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-demo-credentials.json" >> $GITHUB_ENV
+      #     echo "GCP_PROJECT_ID=$(echo '${{ secrets.DEMO_GCP_KEY }}' | jq -r '.project_id')" >> $GITHUB_ENV
+      #     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+      #     gcloud config set project $GCP_PROJECT_ID
+      #     gcloud compute machine-images list --project=$GCP_PROJECT_ID --filter="name~'mi-demo-custom-nodejs-mysql'" --limit=5
 
       # Clean up credentials after build
       - name: Clean Up Credentials

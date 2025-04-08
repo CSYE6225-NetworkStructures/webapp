@@ -7,4 +7,8 @@ router.route('/healthz')
   .get(performHealthCheck)
   .all(methodNotAllowed);
 
+  // router.route('/cicd')
+  // .get(performHealthCheck)
+  // .all(methodNotAllowed);
+
 module.exports = router;
