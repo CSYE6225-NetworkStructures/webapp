@@ -85,3 +85,6 @@ AWS_REGION=us-east-1
 S3_BUCKET_NAME=your-s3-bucket-name
 LOG_DIRECTORY=/opt/myapp/logs
 ENABLE_FILE_LOGGING=true
+```env
+
+test

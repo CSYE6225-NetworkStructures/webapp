@@ -105,7 +105,7 @@ source "amazon-ebs" "ubuntu" {
 
 build {
   sources = [
-    "source.googlecompute.ubuntu",
+    # "source.googlecompute.ubuntu",
     "source.amazon-ebs.ubuntu"
   ]
 

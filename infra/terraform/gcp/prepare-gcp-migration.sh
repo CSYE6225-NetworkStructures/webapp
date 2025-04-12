@@ -50,9 +50,9 @@ log "Found latest compute image: $COMPUTE_IMAGE_NAME"
 
 # Generate timestamp for unique resource naming
 TIMESTAMP=$(date +%s)
-COPIED_COMPUTE_IMAGE_NAME="copy-${COMPUTE_IMAGE_NAME}"
-MACHINE_IMAGE_NAME_DEV="mi-${COMPUTE_IMAGE_NAME}"
-MACHINE_IMAGE_NAME_DEMO="mi-demo-${COMPUTE_IMAGE_NAME}"
+COPIED_COMPUTE_IMAGE_NAME="copy-${COMPUTE_IMAGE_NAME}-${TIMESTAMP}"
+MACHINE_IMAGE_NAME_DEV="mi-${COMPUTE_IMAGE_NAME}-${TIMESTAMP}"
+MACHINE_IMAGE_NAME_DEMO="mi-demo-${COMPUTE_IMAGE_NAME}-${TIMESTAMP}"
 
 # Grant DEMO project access to DEV compute image
 log "Granting DEMO Project ($DEMO_PROJECT_ID) access to Compute Image ($COMPUTE_IMAGE_NAME)..."
