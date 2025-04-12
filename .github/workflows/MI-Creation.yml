@@ -8,7 +8,7 @@ on:
 
 jobs:
   run-unit-tests:
-          name: Run Unit Tests
+          name: Run Unit Tests After Merge
           runs-on: ubuntu-latest
           if: github.repository_owner == 'CSYE6225-NetworkStructures'
       
@@ -61,7 +61,7 @@ jobs:
               run: npm test
 
   validate_packer_File:
-    name: Validate Packer Script
+    name: Validate Packer Script After Merge
     runs-on: ubuntu-latest
     needs: run-unit-tests
     if: github.repository_owner == 'CSYE6225-NetworkStructures'

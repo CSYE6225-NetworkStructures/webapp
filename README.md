@@ -71,6 +71,10 @@ The application includes comprehensive logging and metrics capabilities using AW
   - **Timer**: Duration of S3 operations in milliseconds
 - Metrics include dimensions for better filtering and analysis.
 
+## Deployment
+The application updates the launch template for the auto scaling group after every merge for deployment.
+
+
 ## .env File Structure
 Create a `.env` file in the root directory and add the following variables:
 
@@ -85,6 +89,3 @@ AWS_REGION=us-east-1
 S3_BUCKET_NAME=your-s3-bucket-name
 LOG_DIRECTORY=/opt/myapp/logs
 ENABLE_FILE_LOGGING=true
-```env
-
-test
