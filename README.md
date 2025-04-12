@@ -69,7 +69,7 @@ The application includes comprehensive logging and metrics capabilities using AW
   - **Timer**: Duration of API calls in milliseconds
   - **Timer**: Duration of database queries in milliseconds
   - **Timer**: Duration of S3 operations in milliseconds
-- Metrics include dimensions for better filtering and analysis
+- Metrics include dimensions for better filtering and analysis.
 
 ## Deployment
 The application updates the launch template for the auto scaling group after every merge for deployment.
