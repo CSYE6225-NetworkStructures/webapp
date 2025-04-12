@@ -45,7 +45,7 @@ This project implements a backend (API-only) web application with a health check
   - `400 Bad Request`: Request contains a payload or header.
 
 ## Unit Tests
-The project includes unit tests located in the `__tests__` directory. These tests ensure the functionality and reliability of critical API features, including the health check endpoint.
+The project includes unit tests located in the `__tests__` directory. These tests ensure the functionality and reliability of critical API features, including the health check endpoints.
 
 ## Scripts
 A `scripts` folder contains a shell script (`script.sh`). This script is designed to automate setup tasks on a Linux cloud machine. It can:
