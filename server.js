@@ -69,7 +69,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Add routes
 app.use(healthCheckRoutes);
-app.use('/v1', fileRoutes);
+app.use('/v2', fileRoutes);
 
 // Middleware to handle unimplemented routes
 app.use((req, res) => {
